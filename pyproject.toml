@@ -1,0 +1,59 @@
+[build-system]
+requires = ["setuptools>=68.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "healthcare-procurement-optimization"
+version = "1.0.0"
+description = "Operations Research & Data Engineering platform for public healthcare pharmaceutical procurement optimization (CENABAST Chile Case Study)."
+readme = "README.md"
+requires-python = ">=3.10"
+authors = [
+    { name = "Sebastián Eduardo Ayala Vásquez", email = "ayala.phys.ds@gmail.com" }
+]
+keywords = [
+    "operations-research",
+    "linear-programming",
+    "supply-chain-optimization",
+    "healthcare-analytics",
+    "public-procurement",
+    "scipy-highs",
+    "streamlit",
+]
+dependencies = [
+    "streamlit>=1.30.0",
+    "plotly>=5.18.0",
+    "pandas>=2.0.0",
+    "numpy>=1.24.0",
+    "scipy>=1.10.0",
+    "scikit-learn>=1.2.0",
+    "matplotlib>=3.7.0",
+    "seaborn>=0.12.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=8.0.0",
+    "ruff>=0.4.0",
+    "nbformat>=5.9.0",
+    "nbclient>=0.9.0",
+    "ipykernel>=6.29.0",
+]
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["src*"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["."]
+addopts = "-v --tb=short"
+
+[tool.ruff]
+line-length = 105
+target-version = "py310"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "W"]
+ignore = ["E501"]
+
