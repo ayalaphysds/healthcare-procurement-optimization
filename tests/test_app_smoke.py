@@ -15,7 +15,7 @@ def test_streamlit_app_renders_without_exceptions() -> None:
     at = AppTest.from_file(APP_PATH, default_timeout=30)
     at.run()
     assert not at.exception
-    assert len(at.tabs) == 5
+    assert len(at.tabs) == 6
 
 
 def test_streamlit_currency_toggle_and_slider_interaction() -> None:

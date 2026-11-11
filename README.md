@@ -35,18 +35,19 @@ This platform replaces winner-take-all procurement heuristics with:
 - **Constrained Linear Programming (`SciPy HiGHS`):** A sub-50ms mathematical optimization engine that simultaneously minimizes fiscal expenditure, guarantees **100% hospital demand coverage**, enforces **anti-monopoly split-award caps ($\le 45\%$ per supplier per medication)** so every critical drug is backed by **3 qualified suppliers**, and screens vendors by **historical logistics SLA reliability**.
 - **Beyond Public Health:** While anchored in Chilean transparency data (`1 USD ≈ 950 CLP`, with a **1-click `USD` / `CLP` currency toggle** in the app), the exact engine generalizes to **US/EU hospital GPOs, pharmacy benefit managers (PBMs), retail supply chains, and B2B strategic sourcing platforms**.
 
-> 📖 *For a full glossary of Chilean institutional terms (`CENABAST`, `FONASA`, `MINSAL`, `RUT`, `CLP`), hybrid data provenance notes, and mathematical proofs, see [`docs/international_context_and_methodology.md`](docs/international_context_and_methodology.md).*
+> 📖 *For a full glossary of Chilean institutional terms (`CENABAST`, `FONASA`, `MINSAL`, `RUT`, `CLP`), hybrid data provenance notes, and mathematical proofs, see [`docs/international_context_and_methodology.md`](docs/international_context_and_methodology.md). For the full **System Architecture, Infrastructure Stack & AI Evolution Blueprint**, see [`docs/architecture_and_infrastructure.md`](docs/architecture_and_infrastructure.md).*
 
 ---
 
-## 💻 Software & ML/OR Engineering Highlights
+## 💻 Software, Operations Research & GenAI Engineering Highlights
 
-This repository is engineered as a production-grade showcase across four disciplines:
+This repository showcases a **Hybrid Quantitative + Generative AI (Neuro-Symbolic) Architecture** across five disciplines:
 
 - **Typed ETL & Domain Data Cleaning (`src/data_processing.py`):** Ingests raw semicolon-delimited UTF-8-BOM Spanish government disclosures (`243` vendors), applies deterministic entity classification to filter out internal agency op-ex vendors (postal, security, staff childcare, IT, fuel) down to **166 qualified pharmaceutical & medical supply companies**, performs per-molecule `2.5x IQR` soft winsorization, and outputs clean dual-currency (`USD` & `CLP`) schemas.
-- **High-Performance Operations Research (`src/optimization_model.py`):** Formulates multi-supplier tender clearing as a compact Linear Program solved via the C++ **HiGHS** dual-simplex/interior-point solver (`scipy.optimize.linprog`). Encodes split-award limits directly as variable box bounds `(0, alpha * D_i)` with mathematical feasibility guards (`ceil(1 / alpha)`) for instant interactive re-optimization.
-- **Interactive Executive Decision-Support App (`app.py`):** 5-tab **Streamlit + Plotly** web application featuring live `USD ($)` / `CLP ($)` currency conversion, real-time HiGHS scenario sliders, exact category-level LP attribution, P25–P75 price-band audits, supplier SLA risk bubble charts, and one-click CSV contract schedule export.
-- **Automated Verification & CI/CD (`tests/`, `.github/workflows/ci.yml`):** **14 automated `pytest` tests** verifying ETL determinism, IQR outlier capping, exact LP demand conservation ($\sum_j x_{ij} = D_i$), anti-monopoly share bounds, and headless **Streamlit `AppTest`** UI rendering—enforced via **Ruff** linting and **GitHub Actions** across Python 3.11 and 3.12.
+- **High-Performance Operations Research (`src/optimization_model.py`):** Formulates multi-supplier tender clearing as a compact Linear Program solved via the C++ **HiGHS** dual-simplex/interior-point solver (`scipy.optimize.linprog`). Encodes split-award limits directly as variable box bounds `(0, alpha * D_i)` with mathematical feasibility guards (`ceil(1 / alpha)`) for `<50ms` interactive re-optimization.
+- **GenAI, Regulatory RAG, Guardrails & HITL Governance (`src/ai_auditor.py`):** Integrates a **3-layer resilient Gemini API client** (separating fail-fast `400/401/403 -> ValueError` from retryable `429/500/503 -> TimeoutError` with exponential backoff), **prompt-injection & chunk-poisoning guardrails**, **vector RAG over Chilean Procurement Law 19,886 & CENABAST directives** with mandatory inline citations (`[source: <doc_id>]`), a strict **JSON Schema Draft 2020-12 downstream contract**, **stateful Human-in-the-Loop (`interrupt` / `resume`) supervision**, and **zero-PII `trace_id` JSON telemetry**.
+- **Interactive Executive Decision-Support App (`app.py`):** 6-tab **Streamlit + Plotly** web application featuring live `USD ($)` / `CLP ($)` currency conversion, real-time HiGHS scenario sliders, exact category-level LP attribution, P25–P75 price-band audits, supplier SLA risk bubble charts, interactive **AI Tender Auditor & RAG Copilot**, and one-click CSV contract schedule export.
+- **Automated Verification & CI/CD (`tests/`, `.github/workflows/ci.yml`):** **19 automated `pytest` tests** verifying ETL determinism, IQR outlier capping, exact LP demand conservation ($\sum_j x_{ij} = D_i$), anti-monopoly share bounds, RAG citation enforcement, prompt-injection defense, 3-layer HTTP retry classification, HITL `interrupt`/`resume`, and headless **Streamlit `AppTest`** UI rendering—enforced via **Ruff** linting and **GitHub Actions** across Python 3.11 and 3.12.
 
 ---
 
@@ -67,7 +68,7 @@ Evaluated across an 18-item essential formulary (`1,600` purchase orders; refere
 
 ---
 
-## 🏗️ System Architecture & Mathematical Model
+## 🏗️ System Architecture, Infrastructure Stack & Mathematical Model
 
 ```mermaid
 flowchart LR
@@ -77,10 +78,21 @@ flowchart LR
     C --> E["Optimization Engine<br/>src/optimization_model.py"]
     E --> F["SciPy HiGHS LP Solver<br/>Min Cost s.t. Demand & Share Caps"]
     E --> G["IQR Fair-Price Bands<br/>P25-P75 Overprice Detector"]
-    D --> H["Interactive Streamlit App<br/>app.py (USD / CLP Toggle)"]
+    G --> I["GenAI & Regulatory RAG Auditor<br/>src/ai_auditor.py (Gemini + HITL)"]
+    D --> H["Interactive Streamlit App<br/>app.py (6 Analytical & AI Tabs)"]
     F --> H
     G --> H
+    I --> H
 ```
+
+### Infrastructure Stack Overview
+| Infrastructure Tier | Technologies & Runtime Components |
+| :--- | :--- |
+| **Compute & Packaging** | Python `3.11` / `3.12`, PEP 621 `pyproject.toml`, isolated `.venv`, environment secret injection (`.env` / `os.getenv`). |
+| **Data & Vector Storage** | Immutable raw CSV store (`data/raw/`), IQR-standardized dual-currency store (`data/processed/`), persistent `ChromaDB` & deterministic cosine TF-IDF `RegulatoryVectorIndex`. |
+| **Math & AI Engines** | **C++ HiGHS Solver** (`scipy.optimize.linprog` dual-simplex/interior-point LP) + **Google Gemini 2.5 Flash REST API** (`v1beta`) with deterministic offline fallback. |
+| **Resilience, Security & HITL** | **3-Layer Retry Client** (`401/403 -> ValueError` fail-fast vs `429/503 -> TimeoutError` exponential backoff), regex prompt-injection firewall, **JSON Schema Draft 2020-12** contract, **stateful HITL (`interrupt` / `resume`)**, and `contextvars` `trace_id` zero-PII JSON telemetry. |
+| **Serving & CI/CD** | `Streamlit` reactive web server + `Plotly` interactive charts, `GitHub Actions` Ubuntu matrix runners (`Python 3.11 & 3.12`), `Ruff` static linter, and `Pytest` (`19` unit, property, adversarial & headless `AppTest` UI tests). |
 
 ### Linear Programming Formulation
 For medications $i \in \{1, \dots, N\}$ with clinical demand $D_i$ and SLA-qualified suppliers $j \in \{1, \dots, M\}$ offering unit price $c_{ij}$:
@@ -104,6 +116,7 @@ healthcare-procurement-optimization/
 │       └── clean_procurement_data.csv              # Standardized dual-currency (USD/CLP) analytical dataset
 ├── docs/
 │   ├── assets/optimization_overview.png            # Executive 3-panel summary chart
+│   ├── architecture_and_infrastructure.md          # Complete Infrastructure Stack, 5-Layer Architecture & ADRs
 │   └── international_context_and_methodology.md    # International healthcare context, glossary & LP math guide
 ├── notebooks/
 │   └── procurement_eda_and_optimization.ipynb      # Executed EDA, price-band audit & Pareto sensitivity frontier
@@ -113,12 +126,14 @@ healthcare-procurement-optimization/
 │   ├── __init__.py
 │   ├── config.py                                   # FX constants, typed catalog dataclasses & domain entity filters
 │   ├── data_processing.py                          # Reproducible CLI ETL pipeline & 2.5x IQR winsorizer
-│   └── optimization_model.py                       # ProcurementOptimizer: As-Is KPIs, Fair-Price Bands & HiGHS LP
+│   ├── optimization_model.py                       # ProcurementOptimizer: As-Is KPIs, Fair-Price Bands & HiGHS LP
+│   └── ai_auditor.py                               # Phase 2 GenAI: 3-Layer Retry Client, Regulatory RAG, Guardrails & HITL
 ├── tests/
 │   ├── test_data_processing.py                     # ETL schema, entity filtering & IQR outlier unit tests
 │   ├── test_optimization_model.py                  # LP demand conservation, share caps & HHI property tests
+│   ├── test_ai_auditor.py                          # RAG citations, prompt-injection defense, 3-layer retry & HITL tests
 │   └── test_app_smoke.py                           # Headless Streamlit AppTest UI & slider integration tests
-├── app.py                                          # Interactive Streamlit + Plotly decision-support dashboard
+├── app.py                                          # Interactive 6-tab Streamlit + Plotly decision-support dashboard
 ├── pyproject.toml                                  # Python package metadata, pytest & ruff configuration
 ├── requirements.txt                                # Runtime & test dependencies
 └── LICENSE                                         # Intellectual property & portfolio copyright notice
@@ -176,3 +191,4 @@ streamlit run app.py
 ---
 
 ⚠️ **Intellectual Property Notice:** This repository is published as an open-view software engineering and operations research portfolio case study for technical evaluation and recruitment purposes. Copyright © 2026 Sebastián Eduardo Ayala Vásquez. All rights reserved. Commercial redistribution or unauthorized derivative use is not permitted without prior written consent.
+
